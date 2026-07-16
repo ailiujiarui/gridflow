@@ -52,7 +52,7 @@ function App() {
     if (agentQuery.trim().length < 2) return
     setAgentLoading(true); setAgentError('')
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3001/api'}/agent/messages`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ message: agentQuery }) })
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL ?? '/api'}/agent/messages`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ message: agentQuery }) })
       if (!response.ok) throw new Error('分析服务暂时不可用')
       const result = await response.json() as { total: number; requestId: string; intent: { filters: Array<{ field: string; operator: string; value: string | number }> } }
       setAgentPlan({ total: result.total, requestId: result.requestId, filters: result.intent.filters })
@@ -63,7 +63,7 @@ function App() {
     if (!agentPlan) return
     setAgentLoading(true); setAgentError('')
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3001/api'}/agent/plans`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ filters: agentPlan.filters, nextStatus: 'Review' }) })
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL ?? '/api'}/agent/plans`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ filters: agentPlan.filters, nextStatus: 'Review' }) })
       if (!response.ok) throw new Error('无法生成执行计划')
       setExecutionPlan(await response.json() as { id: string; affected: number; nextStatus: string; expiresAt: string })
     } catch (error) { setAgentError(error instanceof Error ? error.message : '计划生成失败') }
@@ -73,7 +73,7 @@ function App() {
     if (!executionPlan) return
     setAgentLoading(true); setAgentError('')
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3001/api'}/agent/plans/${executionPlan.id}/confirm`, { method: 'POST', headers: { 'idempotency-key': crypto.randomUUID() } })
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL ?? '/api'}/agent/plans/${executionPlan.id}/confirm`, { method: 'POST', headers: { 'idempotency-key': crypto.randomUUID() } })
       const result = await response.json() as { updated?: number; message?: string; auditEventId?: string }
       if (!response.ok) throw new Error(result.message ?? '计划执行失败')
       setExecutionResult(`已更新 ${result.updated} 条记录，审计编号 ${result.auditEventId?.slice(0, 8)}`); setExecutionPlan(null)
