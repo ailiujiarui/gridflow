@@ -26,4 +26,13 @@ describe('企效智控 API', () => {
     const audit = await app.inject({ method: 'GET', url: '/api/audit-events' })
     expect(audit.json().events[0]).toMatchObject({ action: 'project.status.batch_update', outcome: 'success' })
   })
+  it('通过 SSE 返回有序 Agent 事件', async () => {
+    const created = await app.inject({ method: 'POST', url: '/api/agent/runs', payload: { message: '查看预算超过 5 万的项目' } })
+    expect(created.statusCode).toBe(202)
+    const stream = await app.inject({ method: 'GET', url: created.json().eventsUrl })
+    expect(stream.headers['content-type']).toContain('text/event-stream')
+    expect(stream.body).toContain('event: intent_parsed')
+    expect(stream.body).toContain('event: tool_completed')
+    expect(stream.body).toContain('event: completed')
+  })
 })

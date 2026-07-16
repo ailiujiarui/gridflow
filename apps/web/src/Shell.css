@@ -146,6 +146,10 @@
   color: #6f7983;
   font-size: 12px;
 }
+.dashboard-prompt input { border: 0; outline: 0; flex: 1; min-width: 0; padding: 0 12px; font-size: 12px; }
+.stream-status { display: flex; align-items: center; gap: 7px; margin-top: 10px; padding: 8px 10px; background: #f3f6ff; color: #5d6874; font-size: 11px; }
+.stream-status i { width: 7px; height: 7px; border-radius: 50%; background: #5966d8; }
+.stream-status strong { margin-left: auto; color: #344050; }
 .dashboard-prompt button {
   margin-left: auto;
   height: 100%;

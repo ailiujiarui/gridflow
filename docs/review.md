@@ -24,3 +24,11 @@
 - 执行成功后追加审计事件，业务接口没有修改或删除入口。
 - 前端完成“查询 -> 预览 -> 确认 -> 执行 -> 审计”交互闭环。
 - API 8 个测试、Web lint、TypeScript 和生产构建通过。
+
+## 2026-07-16 SSE 流式交互
+
+- 新增 Agent run 创建接口和 SSE 事件接口。
+- 事件按序输出 `intent_parsed`、`tool_started`、`tool_completed` 和 `completed`。
+- 工作台首页使用 EventSource 展示实时阶段和服务端命中数量。
+- 保留同步查询接口，避免数据工作台现有流程回归。
+- API 9 个测试、Web lint、TypeScript 和生产构建通过。

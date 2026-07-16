@@ -12,6 +12,8 @@ type AuditEvent = { id: string; sequence: number; action: string; actorId: strin
 const plans = new Map<string, Plan>()
 const auditEvents: AuditEvent[] = []
 const idempotentResults = new Map<string, unknown>()
+type AgentEvent = { id: number; type: 'intent_parsed' | 'tool_started' | 'tool_completed' | 'completed' | 'failed'; data: Record<string, unknown> }
+const agentRuns = new Map<string, AgentEvent[]>()
 const matches = (row: typeof projects[number], filters: Filter[]) => filters.every(f => f.operator === 'eq' ? String(row[f.field]) === String(f.value) : f.operator === 'gt' ? Number(row[f.field]) > Number(f.value) : f.field === 'due' ? String(row.due) < String(f.value) : Number(row[f.field]) < Number(f.value))
 
 app.get('/health', async () => ({ ok: true }))
@@ -21,6 +23,35 @@ app.post('/api/agent/messages', async (request, reply) => {
   const matched = projects.filter(row => matches(row, intent.filters))
   reply.header('x-request-id', request.id)
   return { runId: crypto.randomUUID(), requestId: request.id, intent, total: matched.length, rows: matched.slice(0, 100) }
+})
+
+app.post('/api/agent/runs', async (request, reply) => {
+  const { message } = z.object({ message: z.string().min(2).max(500) }).parse(request.body)
+  const runId = crypto.randomUUID()
+  try {
+    const intent = parseIntent(message)
+    const matched = projects.filter(row => matches(row, intent.filters))
+    agentRuns.set(runId, [
+      { id: 1, type: 'intent_parsed', data: { intent } },
+      { id: 2, type: 'tool_started', data: { tool: 'query_projects' } },
+      { id: 3, type: 'tool_completed', data: { tool: 'query_projects', total: matched.length } },
+      { id: 4, type: 'completed', data: { total: matched.length, requestId: request.id } },
+    ])
+  } catch {
+    agentRuns.set(runId, [{ id: 1, type: 'failed', data: { code: 'INTENT_PARSE_FAILED', message: '无法解析当前请求' } }])
+  }
+  reply.code(202)
+  return { runId, eventsUrl: `/api/agent/runs/${runId}/events`, requestId: request.id }
+})
+
+app.get('/api/agent/runs/:runId/events', async (request, reply) => {
+  const { runId } = z.object({ runId: z.string().uuid() }).parse(request.params)
+  const events = agentRuns.get(runId)
+  if (!events) return reply.code(404).send({ code: 'RUN_NOT_FOUND', message: 'Agent 运行不存在', requestId: request.id })
+  reply.hijack()
+  reply.raw.writeHead(200, { 'content-type': 'text/event-stream; charset=utf-8', 'cache-control': 'no-cache', connection: 'keep-alive' })
+  for (const event of events) reply.raw.write(`id: ${event.id}\nevent: ${event.type}\ndata: ${JSON.stringify(event.data)}\n\n`)
+  reply.raw.end()
 })
 
 app.post('/api/agent/plans', async (request, reply) => {

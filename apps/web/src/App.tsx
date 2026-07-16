@@ -6,10 +6,31 @@ import AutomationWorkspace from './AutomationWorkspace'
 import './Shell.css'
 
 function Dashboard() {
+  const [prompt, setPrompt] = useState('找出预算超过 5 万的项目')
+  const [streamState, setStreamState] = useState('')
+  const [streamTotal, setStreamTotal] = useState<number | null>(null)
+  const runAgent = async () => {
+    if (prompt.trim().length < 2) return
+    setStreamState('正在创建运行...'); setStreamTotal(null)
+    try {
+      const apiBase = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3001/api'
+      const response = await fetch(`${apiBase}/agent/runs`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ message: prompt }) })
+      if (!response.ok) throw new Error()
+      const run = await response.json() as { eventsUrl: string }
+      const streamUrl = new URL(run.eventsUrl, new URL(apiBase).origin).toString()
+      const source = new EventSource(streamUrl)
+      source.addEventListener('intent_parsed', () => setStreamState('已解析查询意图'))
+      source.addEventListener('tool_started', () => setStreamState('正在查询项目数据...'))
+      source.addEventListener('tool_completed', event => { const data = JSON.parse((event as MessageEvent).data) as { total: number }; setStreamTotal(data.total); setStreamState('数据查询完成') })
+      source.addEventListener('completed', () => { setStreamState('分析完成'); source.close() })
+      source.addEventListener('failed', () => { setStreamState('分析失败，请修改问题后重试'); source.close() })
+      source.onerror = () => { setStreamState('事件流连接中断'); source.close() }
+    } catch { setStreamState('无法连接 Agent 服务') }
+  }
   return <main className="dashboard-page">
     <section className="dashboard-heading"><p>企业运营智能工作台</p><h1>早上好，陈梅</h1><span>今天有 8 个项目需要关注，2 个自动化任务执行失败。</span></section>
     <section className="dashboard-grid">
-      <div className="agent-card"><div className="agent-card-title"><Bot size={18}/><strong>企效助手</strong><span>只读分析</span></div><h2>需要我帮你处理什么？</h2><div className="dashboard-prompt">找出本周逾期且预算超过 5 万的项目<button>分析</button></div><div className="suggestions"><button>查看逾期项目</button><button>总结本周风险</button><button>检查失败流程</button></div></div>
+      <div className="agent-card"><div className="agent-card-title"><Bot size={18}/><strong>企效助手</strong><span>SSE 流式分析</span></div><h2>需要我帮你处理什么？</h2><div className="dashboard-prompt"><input value={prompt} onChange={event => setPrompt(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') void runAgent() }} aria-label="输入企业数据查询"/><button onClick={() => void runAgent()}>分析</button></div>{streamState && <div className="stream-status"><i/><span>{streamState}</span>{streamTotal !== null && <strong>{streamTotal.toLocaleString()} 条记录</strong>}</div>}<div className="suggestions"><button onClick={() => setPrompt('查看逾期项目')}>查看逾期项目</button><button onClick={() => setPrompt('查看预算超过 5 万的项目')}>高预算项目</button><button onClick={() => setPrompt('负责人是陈梅的项目')}>我的项目</button></div></div>
       <div className="attention-panel"><h2>需要关注</h2><div><strong>8</strong><span>逾期项目</span></div><div><strong>2</strong><span>失败运行</span></div><div><strong>4</strong><span>待审核变更</span></div></div>
       <div className="activity-panel"><h2>最近活动</h2><p><i/>逾期项目提醒 <span>8/8 成功 · 10 分钟前</span></p><p><i className="warn"/>客户数据同步 <span>2 条失败 · 1 小时前</span></p><p><i/>项目状态批量更新 <span>12 条完成 · 昨天</span></p></div>
     </section>
