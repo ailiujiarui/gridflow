@@ -1,3 +1,3 @@
-# Performance measurement
+# 性能测量
 
-No performance number is claimed yet. Record browser version, device, dataset size, scroll procedure, visible DOM row count and profiler output before updating this document or a resume.
+当前不声明任何性能数字。更新本文档或简历前，应记录浏览器版本、设备、数据量、滚动步骤、可见 DOM 行数和 Profiler 输出。

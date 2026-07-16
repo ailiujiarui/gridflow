@@ -1,9 +1,9 @@
-# Review
+# 代码审查记录
 
 ## 2026-07-16
 
-- Build passes with TypeScript strict checking and Vite production bundling.
-- Virtual rows use stable business IDs and are positioned from the virtualizer.
-- Empty, saving, saved and filtered-empty states are visible.
-- Undo/redo is bounded to the latest 50 edits.
-- Remaining scope: Fastify/SQLite persistence, Playwright coverage, and real network failure rollback.
+- TypeScript 严格检查与 Vite 生产构建通过。
+- 虚拟行使用稳定业务 ID，并由虚拟器定位。
+- 已提供空数据、保存中、已保存和筛选无结果状态。
+- 撤销/重做限制为最近 50 次编辑。
+- 待完成：Fastify/SQLite 持久化、Playwright 覆盖和真实网络失败回滚。

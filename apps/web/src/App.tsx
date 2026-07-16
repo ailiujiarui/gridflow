@@ -11,9 +11,10 @@ type Row = { id: number; task: string; owner: string; status: Status; priority: 
 type Key = keyof Omit<Row, 'id'>
 type Edit = { id: number; key: Key; before: string | number; after: string | number }
 
-const owners = ['Maya Chen', 'Noah Williams', 'Ava Patel', 'Leo Martins', 'Sofia Kim']
+const owners = ['陈梅', '诺亚', '艾娃', '李欧', '苏菲亚']
 const statuses: Status[] = ['Active', 'Review', 'Blocked', 'Done']
-const tasks = ['Launch onboarding refresh', 'Review enterprise feedback', 'Prepare Q3 forecast', 'Audit design system', 'Resolve API latency', 'Update help center']
+const statusLabels: Record<Status, string> = { Active: '进行中', Review: '待审核', Blocked: '已阻塞', Done: '已完成' }
+const tasks = ['更新入职流程', '整理企业反馈', '准备第三季度预测', '审查设计系统', '解决接口延迟', '更新帮助中心']
 const columns: { key: Key; label: string; width: number; kind?: string }[] = [
   { key: 'task', label: 'Task', width: 310 }, { key: 'owner', label: 'Owner', width: 190 },
   { key: 'status', label: 'Status', width: 150 }, { key: 'priority', label: 'Priority', width: 120 },
@@ -74,21 +75,21 @@ function App() {
   return <main className="app-shell">
     <header className="topbar">
       <div className="brand"><span className="brand-mark"><Grid2X2 size={17}/></span><strong>GridFlow</strong></div>
-      <div className="workspace"><span className="crumb">Operations</span><span>/</span><strong>Project tracker</strong><ChevronDown size={14}/></div>
-      <div className="top-actions"><span className={`save-state ${saved}`}><Check size={14}/>{saved === 'saved' ? 'All changes saved' : 'Saving...'}</span><button className="avatar" title="Account">MC</button></div>
+      <div className="workspace"><span className="crumb">运营管理</span><span>/</span><strong>项目跟踪</strong><ChevronDown size={14}/></div>
+      <div className="top-actions"><span className={`save-state ${saved}`}><Check size={14}/>{saved === 'saved' ? '所有更改已保存' : '正在保存...'}</span><button className="avatar" title="账户">MC</button></div>
     </header>
 
     <section className="page-head">
-      <div><p className="eyebrow">OPERATIONS DATABASE</p><h1>Project tracker</h1></div>
-      <div className="head-actions"><button className="icon-button" onClick={undo} disabled={!history.length} title="Undo"><Undo2 size={17}/></button><button className="icon-button" onClick={redoEdit} disabled={!redo.length} title="Redo"><Redo2 size={17}/></button><button className="primary"><span>New record</span><ChevronDown size={15}/></button></div>
+      <div><p className="eyebrow">运营数据表</p><h1>项目跟踪</h1></div>
+      <div className="head-actions"><button className="icon-button" onClick={undo} disabled={!history.length} title="撤销"><Undo2 size={17}/></button><button className="icon-button" onClick={redoEdit} disabled={!redo.length} title="重做"><Redo2 size={17}/></button><button className="primary"><span>新建记录</span><ChevronDown size={15}/></button></div>
     </section>
 
     <section className="toolbar" aria-label="Table controls">
-      <div className="search"><Search size={16}/><input aria-label="Search records" value={query} onChange={e => setQuery(e.target.value)} placeholder="Search 100,000 records..."/><kbd>⌘ K</kbd></div>
+      <div className="search"><Search size={16}/><input aria-label="搜索记录" value={query} onChange={e => setQuery(e.target.value)} placeholder="搜索 100,000 条记录..."/><kbd>⌘ K</kbd></div>
       <div className="toolbar-actions">
-        <label className="tool-button"><Filter size={16}/><select aria-label="Filter status" value={status} onChange={e => setStatus(e.target.value as Status | 'All')}><option>All</option>{statuses.map(s => <option key={s}>{s}</option>)}</select></label>
-        <button className="tool-button" onClick={() => setSortAsc(v => !v)}><ArrowDownUp size={16}/>Sort {sortAsc ? 'A–Z' : 'Z–A'}</button>
-        <button className="tool-button"><Columns3 size={16}/>Fields</button>
+        <label className="tool-button"><Filter size={16}/><select aria-label="按状态筛选" value={status} onChange={e => setStatus(e.target.value as Status | 'All')}><option>All</option>{statuses.map(s => <option key={s} value={s}>{statusLabels[s]}</option>)}</select></label>
+        <button className="tool-button" onClick={() => setSortAsc(v => !v)}><ArrowDownUp size={16}/>排序 {sortAsc ? '正序' : '倒序'}</button>
+        <button className="tool-button"><Columns3 size={16}/>字段</button>
       </div>
     </section>
 
@@ -102,17 +103,17 @@ function App() {
         if (e.key === 'Escape') setEditing(null)
         if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); if (e.shiftKey) redoEdit(); else undo() }
       }}>
-        {visible.length === 0 ? <div className="empty"><Search size={28}/><h2>No records found</h2><p>Try another search or clear the status filter.</p><button onClick={() => {setQuery(''); setStatus('All')}}>Clear filters</button></div> :
+        {visible.length === 0 ? <div className="empty"><Search size={28}/><h2>没有找到记录</h2><p>请尝试其他搜索词，或清除状态筛选。</p><button onClick={() => {setQuery(''); setStatus('All')}}>清除筛选</button></div> :
         <div className="virtual-space" style={{ height: virtual.getTotalSize() }}>
           {virtual.getVirtualItems().map(item => { const row = visible[item.index]; return <div className="data-row row-grid" key={row.id} style={{ transform: `translateY(${item.start}px)` }}>
-            <div className="row-number"><input type="checkbox" aria-label={`Select row ${row.id}`}/><span>{row.id}</span></div>
+            <div className="row-number"><input type="checkbox" aria-label={`选择第 ${row.id} 行`}/><span>{row.id}</span></div>
             {columns.map(c => { const isEditing = editing?.id === row.id && editing.key === c.key; const value = row[c.key]; return <div key={c.key} style={{ width: c.width }} className={`cell ${active?.id === row.id && active.key === c.key ? 'active' : ''}`} onClick={() => setActive({id: row.id, key: c.key})} onDoubleClick={() => setEditing({id: row.id, key: c.key, value: String(value)})}>
-              {isEditing ? (c.key === 'status' ? <select autoFocus value={editing.value} onChange={e => setEditing({...editing, value:e.target.value})} onBlur={commit}>{statuses.map(s=><option key={s}>{s}</option>)}</select> : <input autoFocus value={editing.value} onChange={e => setEditing({...editing, value:e.target.value})} onBlur={commit}/>) : c.key === 'status' ? <span className={`status ${String(value).toLowerCase()}`}><i/>{value}</span> : c.key === 'priority' ? <span className={`priority p${value}`}>P{value}</span> : c.key === 'budget' ? `$${Number(value).toLocaleString()}` : String(value)}
+              {isEditing ? (c.key === 'status' ? <select autoFocus value={editing.value} onChange={e => setEditing({...editing, value:e.target.value})} onBlur={commit}>{statuses.map(s=><option key={s} value={s}>{statusLabels[s]}</option>)}</select> : <input autoFocus value={editing.value} onChange={e => setEditing({...editing, value:e.target.value})} onBlur={commit}/>) : c.key === 'status' ? <span className={`status ${String(value).toLowerCase()}`}><i/>{statusLabels[value as Status]}</span> : c.key === 'priority' ? <span className={`priority p${value}`}>优先级 {value}</span> : c.key === 'budget' ? `¥${Number(value).toLocaleString()}` : String(value)}
             </div>})}
           </div>})}
         </div>}
       </div>
-      <footer className="grid-footer"><span><strong>{visible.length.toLocaleString()}</strong> records</span><span>Only visible rows are rendered</span><span className="footer-right"><RotateCcw size={13}/> Updated just now</span></footer>
+      <footer className="grid-footer"><span><strong>{visible.length.toLocaleString()}</strong> 条记录</span><span>仅渲染当前可见行</span><span className="footer-right"><RotateCcw size={13}/> 刚刚更新</span></footer>
     </section>
   </main>
 }

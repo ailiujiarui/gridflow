@@ -1,17 +1,17 @@
 # GridFlow
 
-GridFlow is a dense, keyboard-friendly data workbench built with React, TypeScript, Vite and TanStack Virtual. It demonstrates the interaction model for browsing and editing a 100,000-record dataset without creating 100,000 row DOM nodes.
+GridFlow 是一个使用 React、TypeScript、Vite 和 TanStack Virtual 构建的高密度数据工作台，用于展示 10 万条数据下的浏览与编辑交互。
 
-## Included
+## 已实现
 
-- Virtualized fixed-height rows with deterministic 100,000-record demo data
-- Search, status filtering, sort direction and field controls
-- Text, status, number, date and currency cell rendering
-- Double-click editing with Enter/Escape/blur behavior
-- Undo/redo, save status, empty state and keyboard shortcuts
-- Responsive viewing layout with horizontal overflow for dense data
+- 固定行高虚拟滚动与确定性的 100,000 条演示数据
+- 搜索、状态筛选、排序和字段工具
+- 文本、状态、数字、日期和金额单元格展示
+- 双击编辑、回车确认、Esc 取消和失焦保存
+- 撤销/重做、保存状态、空结果状态和键盘快捷键
+- 适合密集数据的响应式浏览布局
 
-## Run
+## 运行
 
 ```bash
 npm install
@@ -19,8 +19,4 @@ npm run dev
 npm run build
 ```
 
-The current demo keeps data in the client so the interaction and virtualization can be evaluated without a service dependency. The API contract and persistence boundary are documented in the parent implementation design and are the next backend increment.
-
-## Performance notes
-
-The grid uses `@tanstack/react-virtual` with a 40px row estimate and 10-row overscan. Measure DOM row count and scroll behavior in the browser before publishing any numeric claim.
+当前版本使用客户端演示数据，便于直接体验虚拟化和交互。Fastify/SQLite 持久化属于下一阶段后端增量。
