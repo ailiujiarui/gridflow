@@ -5,6 +5,8 @@ import {
   Navigate,
   Route,
   Routes,
+  useLocation,
+  useNavigate,
 } from "react-router-dom";
 import {
   Bot,
@@ -217,10 +219,15 @@ function AuditPage() {
   );
 }
 
-function App() {
+function ProductShell() {
   const [role, setRole] = useState<"manager" | "project" | "operations">("project");
+  const navigate = useNavigate();
+  const location = useLocation();
+  const changeRole = (nextRole: typeof role) => {
+    setRole(nextRole);
+    if ((nextRole === "project" && ["/automation", "/audit"].includes(location.pathname)) || (nextRole === "manager" && ["/data", "/automation"].includes(location.pathname))) navigate("/");
+  };
   return (
-    <BrowserRouter>
       <div className="product-shell">
         <aside className="shell-nav">
           <div className="shell-brand">
@@ -228,6 +235,7 @@ function App() {
               <Bot size={17} />
             </span>
             <strong>OpsPilot</strong>
+            <small>AI 项目交付工作台</small>
           </div>
           <nav>
             <NavLink to="/">
@@ -247,8 +255,7 @@ function App() {
               审计
             </NavLink>}
           </nav>
-          <label className="role-switch" title="切换演示角色"><span>角色</span><select value={role} onChange={(event) => setRole(event.target.value as typeof role)}><option value="project">项目经理</option><option value="operations">运营管理员</option><option value="manager">管理者</option></select></label>
-          <div className="shell-user">MC</div>
+          <label className="role-switch" title="切换演示角色"><span className="shell-user">MC</span><div><strong>陈梅</strong><select value={role} onChange={(event) => changeRole(event.target.value as typeof role)}><option value="project">项目经理</option><option value="operations">运营管理员</option><option value="manager">管理者</option></select></div></label>
         </aside>
         <div className="shell-content">
           <Routes>
@@ -260,8 +267,9 @@ function App() {
           </Routes>
         </div>
       </div>
-    </BrowserRouter>
   );
 }
+
+function App() { return <BrowserRouter><ProductShell /></BrowserRouter>; }
 
 export default App;
