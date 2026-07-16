@@ -32,3 +32,12 @@
 - 工作台首页使用 EventSource 展示实时阶段和服务端命中数量。
 - 保留同步查询接口，避免数据工作台现有流程回归。
 - API 9 个测试、Web lint、TypeScript 和生产构建通过。
+
+## 2026-07-16 DeepSeek 接入
+
+- DeepSeek API Key 只从服务端 `.env` 读取，浏览器和 Git 不接触真实 Key。
+- 模型只生成只读结构化意图，工具执行、计划确认和审计仍由 Node.js 控制。
+- 新增 15 秒超时、非法输出降级和模型阶段 SSE 事件。
+- 字段级 Zod schema 约束状态枚举、金额类型、日期格式和操作符。
+- 真实冒烟测试发现并修复状态枚举和 filters 形状问题；修复后 DeepSeek 正确解析复合查询。
+- API 12 个测试、Web lint、TypeScript 和生产构建通过。
