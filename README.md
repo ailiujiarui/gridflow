@@ -35,6 +35,8 @@ npm run build
 
 当前 Agent 支持确定性的只读意图解析，并由 Fastify API 对 10 万条演示项目数据执行真实筛选。写操作仍停留在预览入口，不直接修改业务数据，也不执行任意 HTTP 请求。
 
+配置 `apps/api/.env` 后，Agent 使用 DeepSeek 将自然语言转换为结构化查询意图；输出必须通过字段级 Zod schema 和工具白名单。模型不可用、超时或输出非法时自动降级到确定性解析器。
+
 Agent 固定评测：
 
 ```bash
