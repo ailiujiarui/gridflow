@@ -20,9 +20,9 @@ const matches = (row: typeof projects[number], filters: Filter[]) => filters.eve
 
 app.get('/health', async () => ({ ok: true }))
 app.post('/api/agent/messages', async (request, reply) => {
-  const { message } = z.object({ message: z.string().min(2).max(500) }).parse(request.body)
+  const { message, previousFilters } = z.object({ message: z.string().min(2).max(500), previousFilters: z.array(z.object({ field: z.enum(['status', 'budget', 'due', 'owner']), operator: z.enum(['eq', 'gt', 'lt']), value: z.union([z.string(), z.number()]) })).default([]) }).parse(request.body)
   const parsed = await parseIntentWithDeepSeek(message, { apiKey: process.env.NODE_ENV === 'test' ? '' : undefined })
-  const intent = parsed.intent
+  const intent = { ...parsed.intent, filters: [...previousFilters.filter(previous => !parsed.intent.filters.some(current => current.field === previous.field)), ...parsed.intent.filters] } as typeof parsed.intent
   if (intent.filters.length === 0) return { runId: crypto.randomUUID(), requestId: request.id, intent, total: 0, rows: [], needsClarification: true, clarification: '我还不能确定你想按什么条件筛选。可以试试“列出进行中的项目”“预算超过 5 万的项目”或“负责人是陈梅的项目”。', source: parsed.source }
   const matched = projects.filter(row => matches(row, intent.filters))
   reply.header('x-request-id', request.id)
