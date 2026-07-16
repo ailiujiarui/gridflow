@@ -5,7 +5,7 @@ import {
   CalendarDays,
   Check,
   ChevronDown,
-  Columns3,
+  CircleAlert,
   Filter,
   Grid2X2,
   Redo2,
@@ -41,6 +41,12 @@ const statusLabels: Record<Status, string> = {
   Review: "待审核",
   Blocked: "已阻塞",
   Done: "已完成",
+};
+const filterLabels: Record<string, string> = { status: "状态", budget: "预算", due: "截止日期", owner: "负责人" };
+const operatorLabels: Record<string, string> = { eq: "为", gt: "高于", lt: "早于/低于" };
+const formatFilter = (filter: { field: string; operator: string; value: string | number }) => {
+  const value = filter.field === "budget" ? `¥${Number(filter.value).toLocaleString()}` : filter.field === "status" ? statusLabels[filter.value as Status] ?? filter.value : filter.value;
+  return `${filterLabels[filter.field] ?? filter.field}${operatorLabels[filter.operator] ?? filter.operator}${value}`;
 };
 const tasks = [
   "更新入职流程",
@@ -235,6 +241,7 @@ function App() {
     estimateSize: () => 40,
     overscan: 10,
   });
+  const focusReference = (row: Row) => { const index = visible.findIndex((item) => item.id === row.id); if (index >= 0) virtual.scrollToIndex(index, { align: "center" }); setActive({ id: row.id, key: "task" }); };
 
   const apply = (edit: Edit, record = true) => {
     setRows((old) =>
@@ -322,10 +329,6 @@ function App() {
           >
             <Redo2 size={17} />
           </button>
-          <button className="primary">
-            <span>新建记录</span>
-            <ChevronDown size={15} />
-          </button>
         </div>
       </section>
 
@@ -366,10 +369,6 @@ function App() {
           <button className="tool-button" onClick={() => setSortAsc((v) => !v)}>
             <ArrowDownUp size={16} />
             排序 {sortAsc ? "正序" : "倒序"}
-          </button>
-          <button className="tool-button">
-            <Columns3 size={16} />
-            字段
           </button>
         </div>
       </section>
@@ -419,12 +418,13 @@ function App() {
                 <button onClick={() => { setAgentPlan(null); setServerTotal(null); }}>清除会话</button>
                 <button className="confirm-plan" onClick={() => void createPlan()}>生成执行计划</button>
               </div>
-              <div className="filter-chips">{agentPlan.filters.map((filter) => <span key={`${filter.field}-${filter.operator}`}>{filter.field} {filter.operator} {String(filter.value)}</span>)}</div>
-              <div className="record-refs">数据引用：{agentPlan.rows.slice(0, 3).map((row) => <button key={row.id} onClick={() => setActive({ id: row.id, key: "task" })}>#{row.id} {row.task}</button>)}</div>
+              <div className="filter-chips">{agentPlan.filters.map((filter) => <span key={`${filter.field}-${filter.operator}`}>{formatFilter(filter)}</span>)}</div>
+              <div className="record-refs">数据引用：{agentPlan.rows.slice(0, 3).map((row) => <button key={row.id} onClick={() => focusReference(row)}>#{row.id} {row.task}</button>)}</div>
             </div>
           )}
           {executionPlan && (
-            <div className="agent-result">
+            <div className="agent-result plan-confirmation">
+              <CircleAlert size={16} />
               <span>
                 计划将最多把 <strong>{executionPlan.affected}</strong>{" "}
                 条记录更新为“待审核”，有效期至{" "}
