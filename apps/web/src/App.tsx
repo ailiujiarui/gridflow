@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import {
   ArrowDownUp, CalendarDays, Check, ChevronDown, Columns3, Filter,
-  Grid2X2, Redo2, RotateCcw, Search, Undo2,
+  Grid2X2, Redo2, RotateCcw, Search, Sparkles, Undo2,
 } from 'lucide-react'
 import './App.css'
 
@@ -40,6 +40,9 @@ function App() {
   const [history, setHistory] = useState<Edit[]>([])
   const [redo, setRedo] = useState<Edit[]>([])
   const [saved, setSaved] = useState<'saved' | 'saving'>('saved')
+  const [agentOpen, setAgentOpen] = useState(true)
+  const [agentQuery, setAgentQuery] = useState('')
+  const [agentPlan, setAgentPlan] = useState(false)
   const parentRef = useRef<HTMLDivElement>(null)
 
   const visible = useMemo(() => {
@@ -74,25 +77,27 @@ function App() {
 
   return <main className="app-shell">
     <header className="topbar">
-      <div className="brand"><span className="brand-mark"><Grid2X2 size={17}/></span><strong>GridFlow</strong></div>
+      <div className="brand"><span className="brand-mark"><Grid2X2 size={17}/></span><strong>企效智控</strong></div>
       <div className="workspace"><span className="crumb">运营管理</span><span>/</span><strong>项目跟踪</strong><ChevronDown size={14}/></div>
       <div className="top-actions"><span className={`save-state ${saved}`}><Check size={14}/>{saved === 'saved' ? '所有更改已保存' : '正在保存...'}</span><button className="avatar" title="账户">MC</button></div>
     </header>
 
     <section className="page-head">
-      <div><p className="eyebrow">运营数据表</p><h1>项目跟踪</h1></div>
+      <div><p className="eyebrow">企效智控 · 数据工作台</p><h1>项目跟踪</h1></div>
       <div className="head-actions"><button className="icon-button" onClick={undo} disabled={!history.length} title="撤销"><Undo2 size={17}/></button><button className="icon-button" onClick={redoEdit} disabled={!redo.length} title="重做"><Redo2 size={17}/></button><button className="primary"><span>新建记录</span><ChevronDown size={15}/></button></div>
     </section>
 
     <section className="toolbar" aria-label="Table controls">
       <div className="search"><Search size={16}/><input aria-label="搜索记录" value={query} onChange={e => setQuery(e.target.value)} placeholder="搜索 100,000 条记录..."/><kbd>⌘ K</kbd></div>
       <div className="toolbar-actions">
+        <button className="tool-button agent-trigger" onClick={() => setAgentOpen(v => !v)}><Sparkles size={16}/>智能助手</button>
         <label className="tool-button"><Filter size={16}/><select aria-label="按状态筛选" value={status} onChange={e => setStatus(e.target.value as Status | 'All')}><option>All</option>{statuses.map(s => <option key={s} value={s}>{statusLabels[s]}</option>)}</select></label>
         <button className="tool-button" onClick={() => setSortAsc(v => !v)}><ArrowDownUp size={16}/>排序 {sortAsc ? '正序' : '倒序'}</button>
         <button className="tool-button"><Columns3 size={16}/>字段</button>
       </div>
     </section>
 
+    {agentOpen && <section className="agent-strip"><div className="agent-title"><span className="agent-orb"><Sparkles size={15}/></span><div><strong>企效助手</strong><small>只读分析 · 执行前需要确认</small></div></div><div className="agent-input"><input value={agentQuery} onChange={e => setAgentQuery(e.target.value)} placeholder="例如：找出本周逾期且预算超过 5 万的项目" onKeyDown={e => { if (e.key === 'Enter') setAgentPlan(true) }}/><button onClick={() => setAgentPlan(true)}>分析</button></div>{agentPlan && <div className="agent-result"><Check size={15}/><span>已生成查询计划：当前筛选结果包含 <strong>{visible.length.toLocaleString()}</strong> 条记录。</span><button onClick={() => setAgentPlan(false)}>关闭</button><button className="confirm-plan">生成执行计划</button></div>}</section>}
     <section className="grid-frame">
       <div className="grid-header row-grid" role="row">
         <div className="row-number header-cell">#</div>
