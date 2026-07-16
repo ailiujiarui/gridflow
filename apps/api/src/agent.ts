@@ -3,7 +3,12 @@ import { z } from 'zod'
 export const intentSchema = z.object({
   action: z.literal('query'),
   resource: z.literal('project'),
-  filters: z.array(z.object({ field: z.enum(['status', 'budget', 'due', 'owner']), operator: z.enum(['eq', 'gt', 'lt']), value: z.union([z.string(), z.number()]) })),
+  filters: z.array(z.discriminatedUnion('field', [
+    z.object({ field: z.literal('status'), operator: z.literal('eq'), value: z.enum(['Active', 'Review', 'Blocked', 'Done']) }),
+    z.object({ field: z.literal('budget'), operator: z.enum(['gt', 'lt']), value: z.number().nonnegative() }),
+    z.object({ field: z.literal('due'), operator: z.enum(['gt', 'lt']), value: z.string().regex(/^\d{4}-\d{2}-\d{2}$/) }),
+    z.object({ field: z.literal('owner'), operator: z.literal('eq'), value: z.string().min(2).max(20) }),
+  ])),
   requiresConfirmation: z.literal(false),
 })
 export type AgentIntent = z.infer<typeof intentSchema>
