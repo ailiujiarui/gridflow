@@ -42,8 +42,21 @@ function App() {
   const [saved, setSaved] = useState<'saved' | 'saving'>('saved')
   const [agentOpen, setAgentOpen] = useState(true)
   const [agentQuery, setAgentQuery] = useState('')
-  const [agentPlan, setAgentPlan] = useState(false)
+  const [agentPlan, setAgentPlan] = useState<{ total: number; requestId: string; filters: Array<{ field: string; operator: string; value: string | number }> } | null>(null)
+  const [agentLoading, setAgentLoading] = useState(false)
+  const [agentError, setAgentError] = useState('')
   const parentRef = useRef<HTMLDivElement>(null)
+  const analyze = async () => {
+    if (agentQuery.trim().length < 2) return
+    setAgentLoading(true); setAgentError('')
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3001/api'}/agent/messages`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ message: agentQuery }) })
+      if (!response.ok) throw new Error('分析服务暂时不可用')
+      const result = await response.json() as { total: number; requestId: string; intent: { filters: Array<{ field: string; operator: string; value: string | number }> } }
+      setAgentPlan({ total: result.total, requestId: result.requestId, filters: result.intent.filters })
+    } catch (error) { setAgentError(error instanceof Error ? error.message : '分析失败，请重试') }
+    finally { setAgentLoading(false) }
+  }
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -97,7 +110,7 @@ function App() {
       </div>
     </section>
 
-    {agentOpen && <section className="agent-strip"><div className="agent-title"><span className="agent-orb"><Sparkles size={15}/></span><div><strong>企效助手</strong><small>只读分析 · 执行前需要确认</small></div></div><div className="agent-input"><input value={agentQuery} onChange={e => setAgentQuery(e.target.value)} placeholder="例如：找出本周逾期且预算超过 5 万的项目" onKeyDown={e => { if (e.key === 'Enter') setAgentPlan(true) }}/><button onClick={() => setAgentPlan(true)}>分析</button></div>{agentPlan && <div className="agent-result"><Check size={15}/><span>已生成查询计划：当前筛选结果包含 <strong>{visible.length.toLocaleString()}</strong> 条记录。</span><button onClick={() => setAgentPlan(false)}>关闭</button><button className="confirm-plan">生成执行计划</button></div>}</section>}
+    {agentOpen && <section className="agent-strip"><div className="agent-title"><span className="agent-orb"><Sparkles size={15}/></span><div><strong>企效助手</strong><small>真实服务端查询 · 只读分析</small></div></div><div className="agent-input"><input value={agentQuery} onChange={e => setAgentQuery(e.target.value)} placeholder="例如：找出预算超过 5 万的项目" onKeyDown={e => { if (e.key === 'Enter') void analyze() }}/><button disabled={agentLoading} onClick={() => void analyze()}>{agentLoading ? '分析中...' : '分析'}</button></div>{agentError && <div className="agent-result"><span>{agentError}</span><button onClick={() => void analyze()}>重试</button></div>}{agentPlan && <div className="agent-result"><Check size={15}/><span>服务端命中 <strong>{agentPlan.total.toLocaleString()}</strong> 条记录；解析出 {agentPlan.filters.length} 个筛选条件。请求 ID：{agentPlan.requestId.slice(0, 8)}</span><button onClick={() => setAgentPlan(null)}>关闭</button><button className="confirm-plan">生成执行计划</button></div>}</section>}
     <section className="grid-frame">
       <div className="grid-header row-grid" role="row">
         <div className="row-number header-cell">#</div>
