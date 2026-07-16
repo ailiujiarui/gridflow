@@ -19,6 +19,8 @@ function Dashboard() {
       const run = await response.json() as { eventsUrl: string }
       const streamUrl = new URL(run.eventsUrl, new URL(apiBase).origin).toString()
       const source = new EventSource(streamUrl)
+      source.addEventListener('model_started', () => setStreamState('DeepSeek 正在理解问题...'))
+      source.addEventListener('model_completed', event => { const data = JSON.parse((event as MessageEvent).data) as { source: string }; setStreamState(data.source === 'deepseek' ? 'DeepSeek 解析完成' : '模型不可用，已切换本地解析') })
       source.addEventListener('intent_parsed', () => setStreamState('已解析查询意图'))
       source.addEventListener('tool_started', () => setStreamState('正在查询项目数据...'))
       source.addEventListener('tool_completed', event => { const data = JSON.parse((event as MessageEvent).data) as { total: number }; setStreamTotal(data.total); setStreamState('数据查询完成') })
