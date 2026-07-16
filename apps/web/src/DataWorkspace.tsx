@@ -42,20 +42,24 @@ function App() {
   const [saved, setSaved] = useState<'saved' | 'saving'>('saved')
   const [agentOpen, setAgentOpen] = useState(true)
   const [agentQuery, setAgentQuery] = useState('')
-  const [agentPlan, setAgentPlan] = useState<{ total: number; requestId: string; filters: Array<{ field: string; operator: string; value: string | number }> } | null>(null)
+  const [agentPlan, setAgentPlan] = useState<{ total: number; requestId: string; source: string; filters: Array<{ field: string; operator: string; value: string | number }> } | null>(null)
   const [agentLoading, setAgentLoading] = useState(false)
   const [agentError, setAgentError] = useState('')
+  const [clarification, setClarification] = useState('')
+  const [serverTotal, setServerTotal] = useState<number | null>(null)
   const [executionPlan, setExecutionPlan] = useState<{ id: string; affected: number; nextStatus: string; expiresAt: string } | null>(null)
   const [executionResult, setExecutionResult] = useState('')
   const parentRef = useRef<HTMLDivElement>(null)
   const analyze = async () => {
     if (agentQuery.trim().length < 2) return
-    setAgentLoading(true); setAgentError('')
+    setAgentLoading(true); setAgentError(''); setClarification('')
     try {
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL ?? '/api'}/agent/messages`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ message: agentQuery }) })
       if (!response.ok) throw new Error('分析服务暂时不可用')
-      const result = await response.json() as { total: number; requestId: string; intent: { filters: Array<{ field: string; operator: string; value: string | number }> } }
-      setAgentPlan({ total: result.total, requestId: result.requestId, filters: result.intent.filters })
+      const result = await response.json() as { total: number; requestId: string; source: string; needsClarification: boolean; clarification?: string; rows: Row[]; intent: { filters: Array<{ field: string; operator: string; value: string | number }> } }
+      if (result.needsClarification) { setAgentPlan(null); setClarification(result.clarification ?? '请补充具体筛选条件。'); return }
+      setRows(result.rows); setServerTotal(result.total); setQuery(''); setStatus('All')
+      setAgentPlan({ total: result.total, requestId: result.requestId, source: result.source, filters: result.intent.filters })
     } catch (error) { setAgentError(error instanceof Error ? error.message : '分析失败，请重试') }
     finally { setAgentLoading(false) }
   }
@@ -95,7 +99,7 @@ function App() {
   }
   const commit = () => {
     if (!editing) return
-    const row = rows[editing.id - 1]; const before = row[editing.key]
+    const row = rows.find(item => item.id === editing.id); if (!row) return; const before = row[editing.key]
     let after: string | number = editing.value
     if (editing.key === 'priority' || editing.key === 'budget') after = Number(after) || 0
     if (before !== after) apply({ id: editing.id, key: editing.key, before, after })
@@ -133,7 +137,7 @@ function App() {
       </div>
     </section>
 
-    {agentOpen && <section className="agent-strip"><div className="agent-title"><span className="agent-orb"><Sparkles size={15}/></span><div><strong>企效助手</strong><small>真实服务端查询 · 写操作需确认</small></div></div><div className="agent-input"><input value={agentQuery} onChange={e => setAgentQuery(e.target.value)} placeholder="例如：找出预算超过 5 万的项目" onKeyDown={e => { if (e.key === 'Enter') void analyze() }}/><button disabled={agentLoading} onClick={() => void analyze()}>{agentLoading ? '处理中...' : '分析'}</button></div>{agentError && <div className="agent-result"><span>{agentError}</span><button onClick={() => setAgentError('')}>关闭</button></div>}{agentPlan && !executionPlan && <div className="agent-result"><Check size={15}/><span>服务端命中 <strong>{agentPlan.total.toLocaleString()}</strong> 条记录；解析出 {agentPlan.filters.length} 个筛选条件。请求 ID：{agentPlan.requestId.slice(0, 8)}</span><button onClick={() => setAgentPlan(null)}>关闭</button><button className="confirm-plan" onClick={() => void createPlan()}>生成执行计划</button></div>}{executionPlan && <div className="agent-result"><span>计划将最多把 <strong>{executionPlan.affected}</strong> 条记录更新为“待审核”，有效期至 {new Date(executionPlan.expiresAt).toLocaleTimeString()}。</span><button onClick={() => setExecutionPlan(null)}>取消</button><button className="confirm-plan" onClick={() => void confirmPlan()}>确认执行</button></div>}{executionResult && <div className="agent-result"><Check size={15}/><span>{executionResult}</span><button onClick={() => setExecutionResult('')}>关闭</button></div>}</section>}
+    {agentOpen && <section className="agent-strip"><div className="agent-title"><span className="agent-orb"><Sparkles size={15}/></span><div><strong>企效助手</strong><small>DeepSeek 理解 · 服务端查询</small></div></div><div className="agent-input"><input value={agentQuery} onChange={e => setAgentQuery(e.target.value)} placeholder="例如：找出预算超过 5 万的项目" onKeyDown={e => { if (e.key === 'Enter') void analyze() }}/><button disabled={agentLoading} onClick={() => void analyze()}>{agentLoading ? '处理中...' : '分析'}</button></div>{clarification && <div className="agent-result"><Sparkles size={15}/><span>{clarification}</span><button onClick={() => setClarification('')}>关闭</button></div>}{agentError && <div className="agent-result"><span>{agentError}</span><button onClick={() => setAgentError('')}>关闭</button></div>}{agentPlan && !executionPlan && <div className="agent-result"><Check size={15}/><span>{agentPlan.source === 'deepseek' ? 'DeepSeek' : '本地降级'} 解析了 {agentPlan.filters.length} 个条件，服务端命中 <strong>{agentPlan.total.toLocaleString()}</strong> 条；表格已载入前 100 条。请求 ID：{agentPlan.requestId.slice(0, 8)}</span><button onClick={() => setAgentPlan(null)}>关闭</button><button className="confirm-plan" onClick={() => void createPlan()}>生成执行计划</button></div>}{executionPlan && <div className="agent-result"><span>计划将最多把 <strong>{executionPlan.affected}</strong> 条记录更新为“待审核”，有效期至 {new Date(executionPlan.expiresAt).toLocaleTimeString()}。</span><button onClick={() => setExecutionPlan(null)}>取消</button><button className="confirm-plan" onClick={() => void confirmPlan()}>确认执行</button></div>}{executionResult && <div className="agent-result"><Check size={15}/><span>{executionResult}</span><button onClick={() => setExecutionResult('')}>关闭</button></div>}</section>}
     <section className="grid-frame">
       <div className="grid-header row-grid" role="row">
         <div className="row-number header-cell">#</div>
@@ -154,7 +158,7 @@ function App() {
           </div>})}
         </div>}
       </div>
-      <footer className="grid-footer"><span><strong>{visible.length.toLocaleString()}</strong> 条记录</span><span>仅渲染当前可见行</span><span className="footer-right"><RotateCcw size={13}/> 刚刚更新</span></footer>
+      <footer className="grid-footer"><span><strong>{(serverTotal ?? visible.length).toLocaleString()}</strong> 条记录</span><span>{serverTotal === null ? '仅渲染当前可见行' : `已载入前 ${visible.length} 条服务端结果`}</span><span className="footer-right"><RotateCcw size={13}/> 刚刚更新</span></footer>
     </section>
   </main>
 }

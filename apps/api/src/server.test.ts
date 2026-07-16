@@ -12,6 +12,10 @@ describe('企效智控 API', () => {
     expect(body.total).toBeGreaterThan(0)
     expect(response.headers['x-request-id']).toBeTruthy()
   })
+  it('无法解析条件时追问，而不是返回全部数据', async () => {
+    const response = await app.inject({ method: 'POST', url: '/api/agent/messages', payload: { message: '列出所有清醒的项目' } })
+    expect(response.json()).toMatchObject({ needsClarification: true, total: 0, rows: [] })
+  })
   it('预览、确认并写入追加式审计', async () => {
     const preview = await app.inject({ method: 'POST', url: '/api/agent/plans', payload: { filters: [{ field: 'owner', operator: 'eq', value: '陈梅' }], nextStatus: 'Review' } })
     expect(preview.statusCode).toBe(201)
