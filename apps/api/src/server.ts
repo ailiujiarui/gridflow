@@ -1,7 +1,9 @@
+import 'dotenv/config'
 import Fastify from 'fastify'
 import cors from '@fastify/cors'
 import { z } from 'zod'
 import { parseIntent } from './agent.js'
+import { parseIntentWithDeepSeek } from './deepseek.js'
 import { projects } from './data.js'
 
 const app = Fastify({ logger: true, genReqId: () => crypto.randomUUID() })
@@ -12,7 +14,7 @@ type AuditEvent = { id: string; sequence: number; action: string; actorId: strin
 const plans = new Map<string, Plan>()
 const auditEvents: AuditEvent[] = []
 const idempotentResults = new Map<string, unknown>()
-type AgentEvent = { id: number; type: 'intent_parsed' | 'tool_started' | 'tool_completed' | 'completed' | 'failed'; data: Record<string, unknown> }
+type AgentEvent = { id: number; type: 'model_started' | 'model_completed' | 'intent_parsed' | 'tool_started' | 'tool_completed' | 'completed' | 'failed'; data: Record<string, unknown> }
 const agentRuns = new Map<string, AgentEvent[]>()
 const matches = (row: typeof projects[number], filters: Filter[]) => filters.every(f => f.operator === 'eq' ? String(row[f.field]) === String(f.value) : f.operator === 'gt' ? Number(row[f.field]) > Number(f.value) : f.field === 'due' ? String(row.due) < String(f.value) : Number(row[f.field]) < Number(f.value))
 
@@ -29,13 +31,16 @@ app.post('/api/agent/runs', async (request, reply) => {
   const { message } = z.object({ message: z.string().min(2).max(500) }).parse(request.body)
   const runId = crypto.randomUUID()
   try {
-    const intent = parseIntent(message)
+    const parsed = await parseIntentWithDeepSeek(message, { apiKey: process.env.NODE_ENV === 'test' ? '' : undefined })
+    const intent = parsed.intent
     const matched = projects.filter(row => matches(row, intent.filters))
     agentRuns.set(runId, [
-      { id: 1, type: 'intent_parsed', data: { intent } },
-      { id: 2, type: 'tool_started', data: { tool: 'query_projects' } },
-      { id: 3, type: 'tool_completed', data: { tool: 'query_projects', total: matched.length } },
-      { id: 4, type: 'completed', data: { total: matched.length, requestId: request.id } },
+      { id: 1, type: 'model_started', data: { model: parsed.model } } as AgentEvent,
+      { id: 2, type: 'model_completed', data: { model: parsed.model, durationMs: Math.round(parsed.durationMs), source: parsed.source, fallbackReason: parsed.fallbackReason } } as AgentEvent,
+      { id: 3, type: 'intent_parsed', data: { intent } },
+      { id: 4, type: 'tool_started', data: { tool: 'query_projects' } },
+      { id: 5, type: 'tool_completed', data: { tool: 'query_projects', total: matched.length } },
+      { id: 6, type: 'completed', data: { total: matched.length, requestId: request.id } },
     ])
   } catch {
     agentRuns.set(runId, [{ id: 1, type: 'failed', data: { code: 'INTENT_PARSE_FAILED', message: '无法解析当前请求' } }])
