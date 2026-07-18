@@ -13,34 +13,17 @@ import {
   Undo2,
 } from "lucide-react";
 import { parseFirstCell, serializeCell } from "./grid/clipboard";
+import GridCell from "./grid/GridCell";
+import { statusLabels, statuses, type Column, type Key, type Row, type Status } from "./grid/model";
 import "./App.css";
 
-type Status = "Active" | "Review" | "Blocked" | "Done";
-type Row = {
-  id: number;
-  version: number;
-  task: string;
-  owner: string;
-  status: Status;
-  priority: number;
-  due: string;
-  budget: number;
-};
-type Key = keyof Omit<Row, "id" | "version">;
 type Edit = {
   id: number;
   key: Key;
   before: string | number;
   after: string | number;
 };
-const statuses: Status[] = ["Active", "Review", "Blocked", "Done"];
-const statusLabels: Record<Status, string> = {
-  Active: "进行中",
-  Review: "待审核",
-  Blocked: "已阻塞",
-  Done: "已完成",
-};
-const columns: { key: Key; label: string; width: number }[] = [
+const columns: Column[] = [
   { key: "task", label: "项目", width: 310 },
   { key: "owner", label: "负责人", width: 190 },
   { key: "status", label: "状态", width: 150 },
@@ -454,78 +437,7 @@ export default function DataWorkspace() {
                       />
                       <span>{row.id}</span>
                     </div>
-                    {columns.map((column) => {
-                      const isEditing =
-                        editing?.id === row.id && editing.key === column.key;
-                      const value = row[column.key];
-                      return (
-                        <div
-                          key={column.key}
-                          style={{ width: column.width }}
-                          className={`cell ${active?.id === row.id && active.key === column.key ? "active" : ""}`}
-                          onClick={() => {
-                            setActive({ id: row.id, key: column.key });
-                            parentRef.current?.focus();
-                          }}
-                          onDoubleClick={() =>
-                            setEditing({
-                              id: row.id,
-                              key: column.key,
-                              value: String(value),
-                            })
-                          }
-                        >
-                          {isEditing ? (
-                            column.key === "status" ? (
-                              <select
-                                autoFocus
-                                value={editing.value}
-                                onChange={(event) =>
-                                  setEditing({
-                                    ...editing,
-                                    value: event.target.value,
-                                  })
-                                }
-                                onBlur={() => void commit()}
-                              >
-                                {statuses.map((item) => (
-                                  <option key={item} value={item}>
-                                    {statusLabels[item]}
-                                  </option>
-                                ))}
-                              </select>
-                            ) : (
-                              <input
-                                autoFocus
-                                value={editing.value}
-                                onChange={(event) =>
-                                  setEditing({
-                                    ...editing,
-                                    value: event.target.value,
-                                  })
-                                }
-                                onBlur={() => void commit()}
-                              />
-                            )
-                          ) : column.key === "status" ? (
-                            <span
-                              className={`status ${String(value).toLowerCase()}`}
-                            >
-                              <i />
-                              {statusLabels[value as Status]}
-                            </span>
-                          ) : column.key === "priority" ? (
-                            <span className={`priority p${value}`}>
-                              优先级 {value}
-                            </span>
-                          ) : column.key === "budget" ? (
-                            `¥${Number(value).toLocaleString()}`
-                          ) : (
-                            String(value)
-                          )}
-                        </div>
-                      );
-                    })}
+                    {columns.map((column) => <GridCell key={column.key} row={row} column={column} active={active?.id === row.id && active.key === column.key} editing={editing} onActivate={() => { setActive({ id: row.id, key: column.key }); parentRef.current?.focus(); }} onEditStart={() => setEditing({ id: row.id, key: column.key, value: String(row[column.key]) })} onEditChange={(value) => setEditing((current) => current ? { ...current, value } : current)} onCommit={() => void commit()} />)}
                   </div>
                 );
               })}
