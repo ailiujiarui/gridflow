@@ -1,40 +1,34 @@
-# 企效智控
+# GridFlow
 
-企效智控是一个融合数据工作台、企业 Agent 和可视化自动化的运营管理产品。
+GridFlow 是面向运营人员的高性能项目数据工作台，核心目标是快速定位、批量编辑并可靠保存大量结构化数据。
 
-## 模块
+当前重构聚焦：
 
-- `/`：统一工作台与企效助手入口
-- `/data`：10 万条演示数据的虚拟化数据工作台
-- `/automation`：节点式工作流编辑器
-- `/audit`：审计与失败重试入口
+- React + TypeScript 数据网格架构
+- 10 万行确定性压力数据下的虚拟滚动
+- 服务端筛选、排序和游标分页
+- 多类型单元格与键盘编辑
+- 框选、复制粘贴、撤销重做
+- 乐观更新、版本冲突和失败回滚
+- 前端组件测试、Playwright 和性能证据
 
-## 本地运行
+OpsPilot Agent 与自动化画布已退出主产品。历史实现保存在 `opspilot-archive` 标签中，不作为当前 GridFlow 能力宣传。
+
+## 当前运行
 
 ```bash
 npm install
 npm run dev
 ```
 
-在仓库根目录执行即可同时启动 Node.js API 和 Web。默认地址：Web `http://localhost:5173`，API `http://localhost:3001`。Vite 会把浏览器的 `/api` 请求代理到 Node.js，避免手工配置跨域地址。
+默认地址：Web `http://localhost:5173`，API `http://localhost:3001`。
 
-验证命令：
+## 验证
 
 ```bash
 npm run lint
-npx tsc -b
+npm run test
 npm run build
 ```
 
-自动化模块由原 CanvasFlow 项目迁入。原仓库保留为归档，只读保存迁移前历史。
-
-当前 Agent 支持确定性的只读意图解析，并由 Fastify API 对 10 万条演示项目数据执行真实筛选。写操作仍停留在预览入口，不直接修改业务数据，也不执行任意 HTTP 请求。
-
-配置 `apps/api/.env` 后，Agent 使用 DeepSeek 将自然语言转换为结构化查询意图；输出必须通过字段级 Zod schema 和工具白名单。模型不可用、超时或输出非法时自动降级到确定性解析器。
-
-Agent 固定评测：
-
-```bash
-cd apps/api
-npm run eval
-```
+当前处于核心重构阶段，README 只描述已经保留或正在落地的 GridFlow 范围，不填写未经测量的性能数字。

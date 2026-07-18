@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import {
   ArrowDownUp,
@@ -19,6 +19,7 @@ import "./App.css";
 type Status = "Active" | "Review" | "Blocked" | "Done";
 type Row = {
   id: number;
+  version: number;
   task: string;
   owner: string;
   status: Status;
@@ -34,7 +35,6 @@ type Edit = {
   after: string | number;
 };
 
-const owners = ["陈梅", "诺亚", "艾娃", "李欧", "苏菲亚"];
 const statuses: Status[] = ["Active", "Review", "Blocked", "Done"];
 const statusLabels: Record<Status, string> = {
   Active: "进行中",
@@ -48,14 +48,6 @@ const formatFilter = (filter: { field: string; operator: string; value: string |
   const value = filter.field === "budget" ? `¥${Number(filter.value).toLocaleString()}` : filter.field === "status" ? statusLabels[filter.value as Status] ?? filter.value : filter.value;
   return `${filterLabels[filter.field] ?? filter.field}${operatorLabels[filter.operator] ?? filter.operator}${value}`;
 };
-const tasks = [
-  "更新入职流程",
-  "整理企业反馈",
-  "准备第三季度预测",
-  "审查设计系统",
-  "解决接口延迟",
-  "更新帮助中心",
-];
 const columns: { key: Key; label: string; width: number; kind?: string }[] = [
   { key: "task", label: "Task", width: 310 },
   { key: "owner", label: "Owner", width: 190 },
@@ -65,20 +57,8 @@ const columns: { key: Key; label: string; width: number; kind?: string }[] = [
   { key: "budget", label: "Budget", width: 150 },
 ];
 
-function makeRows(count = 100000): Row[] {
-  return Array.from({ length: count }, (_, i) => ({
-    id: i + 1,
-    task: `${tasks[i % tasks.length]} ${String(i + 1).padStart(5, "0")}`,
-    owner: owners[(i * 7) % owners.length],
-    status: statuses[(i * 3) % statuses.length],
-    priority: (i % 4) + 1,
-    due: `2026-${String((i % 6) + 7).padStart(2, "0")}-${String((i % 27) + 1).padStart(2, "0")}`,
-    budget: 1200 + ((i * 137) % 48000),
-  }));
-}
-
 function App() {
-  const [rows, setRows] = useState(() => makeRows());
+  const [rows, setRows] = useState<Row[]>([]);
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<Status | "All">("All");
   const [sortAsc, setSortAsc] = useState(true);
@@ -90,8 +70,8 @@ function App() {
   } | null>(null);
   const [history, setHistory] = useState<Edit[]>([]);
   const [redo, setRedo] = useState<Edit[]>([]);
-  const [saved, setSaved] = useState<"saved" | "saving">("saved");
-  const [agentOpen, setAgentOpen] = useState(true);
+  const [saved, setSaved] = useState<"saved" | "saving" | "error">("saved");
+  const [agentOpen] = useState(false);
   const [agentQuery, setAgentQuery] = useState("");
   const [agentPlan, setAgentPlan] = useState<{
     total: number;
@@ -111,7 +91,23 @@ function App() {
     expiresAt: string;
   } | null>(null);
   const [executionResult, setExecutionResult] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
   const parentRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const controller = new AbortController();
+    setLoading(true); setLoadError(""); setNextCursor(null);
+    const params = new URLSearchParams({ limit: "100", sort: `due:${sortAsc ? "asc" : "desc"}` });
+    if (query.trim()) params.set("keyword", query.trim());
+    if (status !== "All") params.set("status", status);
+    fetch(`/api/projects?${params}`, { signal: controller.signal })
+      .then((response) => { if (!response.ok) throw new Error("项目数据加载失败"); return response.json() as Promise<{ rows: Row[]; total: number; nextCursor: string | null }>; })
+      .then((result) => { setRows(result.rows); setServerTotal(result.total); setNextCursor(result.nextCursor); })
+      .catch((error: unknown) => { if (error instanceof DOMException && error.name === "AbortError") return; setLoadError(error instanceof Error ? error.message : "项目数据加载失败"); })
+      .finally(() => setLoading(false));
+    return () => controller.abort();
+  }, [query, status, sortAsc]);
   const analyze = async () => {
     if (agentQuery.trim().length < 2) return;
     setAgentLoading(true);
@@ -252,9 +248,8 @@ function App() {
       setRedo([]);
     }
     setSaved("saving");
-    window.setTimeout(() => setSaved("saved"), 650);
   };
-  const commit = () => {
+  const commit = async () => {
     if (!editing) return;
     const row = rows.find((item) => item.id === editing.id);
     if (!row) return;
@@ -262,8 +257,16 @@ function App() {
     let after: string | number = editing.value;
     if (editing.key === "priority" || editing.key === "budget")
       after = Number(after) || 0;
-    if (before !== after)
-      apply({ id: editing.id, key: editing.key, before, after });
+    if (before !== after) {
+      const edit = { id: editing.id, key: editing.key, before, after };
+      apply(edit);
+      try {
+        const response = await fetch(`/api/projects/${row.id}/cells/${editing.key}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ value: after, version: row.version }) });
+        const result = await response.json() as { row?: Row; message?: string };
+        if (!response.ok || !result.row) throw new Error(result.message ?? "保存失败");
+        setRows((current) => current.map((item) => item.id === row.id ? result.row! : item)); setSaved("saved");
+      } catch { setRows((current) => current.map((item) => item.id === row.id ? { ...item, [editing.key]: before } : item)); setSaved("error"); }
+    }
     setEditing(null);
   };
   const undo = () => {
@@ -288,7 +291,7 @@ function App() {
           <span className="brand-mark">
             <Grid2X2 size={17} />
           </span>
-          <strong>数据工作台</strong>
+          <strong>GridFlow</strong>
         </div>
         <div className="workspace">
           <span className="crumb">运营管理</span>
@@ -299,7 +302,7 @@ function App() {
         <div className="top-actions">
           <span className={`save-state ${saved}`}>
             <Check size={14} />
-            {saved === "saved" ? "所有更改已保存" : "正在保存..."}
+            {saved === "saved" ? "所有更改已保存" : saved === "saving" ? "正在保存..." : "保存失败，已回滚"}
           </span>
           <button className="avatar" title="账户">
             MC
@@ -309,7 +312,7 @@ function App() {
 
       <section className="page-head">
         <div>
-          <p className="eyebrow">OpsPilot · 项目交付数据</p>
+          <p className="eyebrow">高性能项目数据工作台</p>
           <h1>项目跟踪</h1>
         </div>
         <div className="head-actions">
@@ -344,13 +347,6 @@ function App() {
           <kbd>⌘ K</kbd>
         </div>
         <div className="toolbar-actions">
-          <button
-            className="tool-button agent-trigger"
-            onClick={() => setAgentOpen((v) => !v)}
-          >
-            <Sparkles size={16} />
-            智能助手
-          </button>
           <label className="tool-button">
             <Filter size={16} />
             <select
@@ -477,7 +473,11 @@ function App() {
             }
           }}
         >
-          {visible.length === 0 ? (
+          {loading ? (
+            <div className="empty"><div className="loading-bar" /><h2>正在加载项目数据</h2><p>仅请求当前页面，不会一次加载全部数据。</p></div>
+          ) : loadError ? (
+            <div className="empty"><h2>数据加载失败</h2><p>{loadError}</p><button onClick={() => window.location.reload()}>重试</button></div>
+          ) : visible.length === 0 ? (
             <div className="empty">
               <Search size={28} />
               <h2>没有找到记录</h2>
@@ -589,15 +589,9 @@ function App() {
           )}
         </div>
         <footer className="grid-footer">
-          <span>
-            <strong>{(serverTotal ?? visible.length).toLocaleString()}</strong>{" "}
-            条记录
-          </span>
-          <span>
-            {serverTotal === null
-              ? "仅渲染当前可见行"
-              : `已载入前 ${visible.length} 条服务端结果`}
-          </span>
+          <span><strong>{(serverTotal ?? visible.length).toLocaleString()}</strong> 条匹配记录</span>
+          <span>当前已载入 {visible.length} 条 · 仅渲染可见行</span>
+          {nextCursor && <button className="load-more" onClick={() => { const params = new URLSearchParams({ limit: "100", cursor: nextCursor, sort: `due:${sortAsc ? "asc" : "desc"}` }); if (query.trim()) params.set("keyword", query.trim()); if (status !== "All") params.set("status", status); fetch(`/api/projects?${params}`).then((response) => response.json() as Promise<{ rows: Row[]; nextCursor: string | null }>).then((result) => { setRows((current) => [...current, ...result.rows]); setNextCursor(result.nextCursor); }); }}>加载下一页</button>}
           <span className="footer-right">
             <RotateCcw size={13} /> 刚刚更新
           </span>

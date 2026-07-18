@@ -491,6 +491,10 @@ select {
   border-radius: 5px;
   padding: 7px 11px;
 }
+.loading-bar { width: 180px; height: 4px; background: #e5e9ee; border-radius: 4px; overflow: hidden; position: relative; }
+.loading-bar::after { content: ""; position: absolute; inset: 0 auto 0 0; width: 42%; background: #4f5fd7; animation: loading 1.2s ease-in-out infinite; }
+@keyframes loading { from { transform: translateX(-100%); } to { transform: translateX(340%); } }
+.load-more { border: 1px solid #d6dbe0; background: #fff; color: #4f5fd7; border-radius: 4px; padding: 4px 8px; font-size: 10px; }
 @media (max-width: 760px) {
   .workspace,
   .save-state,

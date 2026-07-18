@@ -76,3 +76,13 @@
 - 移除数据页无行为的“新建记录”和“字段”占位入口。
 - 自动化页面保留项目交付领域节点，桌面与窄屏导航有明确布局策略。
 - 根级 lint、14 个 API 测试和前后端生产构建通过。
+
+## GridFlow 重构阶段一/二
+
+- 创建 `opspilot-archive` 标签和 `refactor/gridflow-core` 分支，保留融合版本历史。
+- 当前首屏恢复为单一 GridFlow 数据工作台；Agent、画布、审计和角色入口不再参与渲染。
+- API 支持服务端筛选、排序、游标分页和 `PATCH` 单元格保存。
+- 前端不再调用 `makeRows(100000)`，首屏只请求 100 行并支持加载下一页。
+- 单元格保存携带版本号，服务端冲突返回 409，前端失败回滚。
+- 移除当前 Web 入口不需要的 React Flow、Router、Query 和 Zustand 依赖。
+- API 16 个测试、Web lint、TypeScript 和生产构建通过。

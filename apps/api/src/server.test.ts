@@ -20,6 +20,22 @@ describe('企效智控 API', () => {
     const response = await app.inject({ method: 'POST', url: '/api/agent/messages', payload: { message: '负责人是陈梅的项目', previousFilters: [{ field: 'status', operator: 'eq', value: 'Active' }] } })
     expect(response.json().intent.filters).toEqual(expect.arrayContaining([{ field: 'status', operator: 'eq', value: 'Active' }, { field: 'owner', operator: 'eq', value: '陈梅' }]))
   })
+  it('服务端执行筛选、排序和游标分页', async () => {
+    const first = await app.inject({ method: 'GET', url: '/api/projects?status=Active&sort=budget:desc&limit=3' })
+    const body = first.json()
+    expect(body.rows).toHaveLength(3)
+    expect(body.nextCursor).toBeTruthy()
+    expect(body.rows[0].budget).toBeGreaterThanOrEqual(body.rows[1].budget)
+    const second = await app.inject({ method: 'GET', url: `/api/projects?status=Active&sort=budget:desc&limit=3&cursor=${body.nextCursor}` })
+    expect(second.json().rows[0].id).not.toBe(body.rows[0].id)
+  })
+  it('保存单元格并拒绝过期版本', async () => {
+    const row = (await app.inject({ method: 'GET', url: '/api/projects?limit=1' })).json().rows[0]
+    const saved = await app.inject({ method: 'PATCH', url: `/api/projects/${row.id}/cells/status`, payload: { value: 'Review', version: row.version } })
+    expect(saved.statusCode).toBe(200)
+    const conflict = await app.inject({ method: 'PATCH', url: `/api/projects/${row.id}/cells/status`, payload: { value: 'Done', version: row.version } })
+    expect(conflict.statusCode).toBe(409)
+  })
   it('预览、确认并写入追加式审计', async () => {
     const preview = await app.inject({ method: 'POST', url: '/api/agent/plans', payload: { filters: [{ field: 'owner', operator: 'eq', value: '陈梅' }], nextStatus: 'Review' } })
     expect(preview.statusCode).toBe(201)
