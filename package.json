@@ -4,8 +4,10 @@
   "scripts": {
     "dev": "concurrently -n api,web -c yellow,cyan \"npm --prefix apps/api run dev\" \"npm --prefix apps/web run dev\"",
     "build": "npm --prefix apps/api run build && npm --prefix apps/web run build",
-    "test": "npm --prefix apps/api test",
+    "test": "npm --prefix apps/api test && npm --prefix apps/web test",
     "lint": "npm --prefix apps/web run lint"
   },
-  "devDependencies": { "concurrently": "^9.2.1" }
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
 }
