@@ -86,3 +86,13 @@
 - 单元格保存携带版本号，服务端冲突返回 409，前端失败回滚。
 - 移除当前 Web 入口不需要的 React Flow、Router、Query 和 Zustand 依赖。
 - API 16 个测试、Web lint、TypeScript 和生产构建通过。
+
+## GridFlow 精简重构阶段三
+
+- `App` 已恢复为单一数据工作台入口，不再渲染 Agent、自动化、审计和角色壳层。
+- 当前前端首屏只依赖虚拟列表和 Fastify 项目 API。
+- 移除当前分支的 React Flow、Router、Query、Zustand、Agent 和 DeepSeek 依赖/代码；融合版本保留在 `opspilot-archive` 标签。
+- 增加方向键、Tab、复制、粘贴和虚拟行定位焦点。
+- 抽出剪贴板和焦点移动纯函数，并增加 3 个 Web 单元测试。
+- API 3 个测试、Web 3 个测试、lint、TypeScript 和生产构建通过。
+- 当前分支：`refactor/gridflow-core`，尚未合并主分支。
