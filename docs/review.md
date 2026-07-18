@@ -96,3 +96,11 @@
 - 抽出剪贴板和焦点移动纯函数，并增加 3 个 Web 单元测试。
 - API 3 个测试、Web 3 个测试、lint、TypeScript 和生产构建通过。
 - 当前分支：`refactor/gridflow-core`，尚未合并主分支。
+
+## GridFlow 重构阶段四
+
+- `DataWorkspace` 已收缩为数据查询、虚拟列表、编辑、导航和保存协调器。
+- 单元格渲染与编辑器抽出为 `grid/GridCell.tsx`；领域类型集中在 `grid/model.ts`。
+- 服务端保存、版本冲突和失败回滚已接入单元格提交。
+- 方向键、Tab、复制、粘贴与虚拟滚动定位保持可用。
+- API 3 个测试、Web 3 个测试、lint、TypeScript 和生产构建通过。
